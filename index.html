@@ -215,8 +215,10 @@ const CONFIG = {
 };
 
 function getMarginRate(qty){
-  for(const t of CONFIG.margin_tiers){ if(qty >= t.min) return t.rate; }
-  return CONFIG.margin_tiers.at(-1).rate;
+  for (var i=0;i<CONFIG.margin_tiers.length;i++){
+    if (qty >= CONFIG.margin_tiers[i].min) return CONFIG.margin_tiers[i].rate;
+  }
+  return CONFIG.margin_tiers[CONFIG.margin_tiers.length-1].rate; // safe fallback
 }
 
 const $ = id=>document.getElementById(id);
@@ -231,15 +233,15 @@ function calcScreen(garment, colors, volume, neckOn){
   const ink_cost = CONFIG.ink_per_color * c;
   const labor = CONFIG.labor_per_garment;
 
-  let unit_cost_no_vat = garment + setup_amort + ink_cost + labor;
+  var unit_cost_no_vat = garment + setup_amort + ink_cost + labor;
   unit_cost_no_vat *= (1 + CONFIG.overhead_rate);
 
   const margin = getMarginRate(v);
   const pppNoVat = unit_cost_no_vat * (1 + margin);
   const tpNoVat  = pppNoVat * v;
 
-  let pppVat = pppNoVat * (1 + CONFIG.vatRate);
-  let tpVat  = tpNoVat  * (1 + CONFIG.vatRate);
+  var pppVat = pppNoVat * (1 + CONFIG.vatRate);
+  var tpVat  = tpNoVat  * (1 + CONFIG.vatRate);
 
   if(neckOn){
     pppVat += CONFIG.neck_label_vat_inclusive_add;
@@ -253,15 +255,15 @@ function calcDTF(garment, volume, neckOn){
   const v = Math.max(1, Math.floor(volume||0));
   const labor = CONFIG.labor_per_garment;
 
-  let unit_cost_no_vat = garment + CONFIG.dtf_price_no_vat + labor;
+  var unit_cost_no_vat = garment + CONFIG.dtf_price_no_vat + labor;
   unit_cost_no_vat *= (1 + CONFIG.overhead_rate);
 
   const margin = getMarginRate(v);
   const pppNoVat = unit_cost_no_vat * (1 + margin);
   const tpNoVat  = pppNoVat * v;
 
-  let pppVat = pppNoVat * (1 + CONFIG.vatRate);
-  let tpVat  = tpNoVat  * (1 + CONFIG.vatRate);
+  var pppVat = pppNoVat * (1 + CONFIG.vatRate);
+  var tpVat  = tpNoVat  * (1 + CONFIG.vatRate);
 
   if(neckOn){
     pppVat += CONFIG.neck_label_vat_inclusive_add;
@@ -282,10 +284,9 @@ const p1=$("pppNoVat"), t1=$("tpNoVat"), p2=$("pppVat"), t2=$("tpVat");
 const d1=$("dtfPppNoVat"), d2=$("dtfTpNoVat"), d3=$("dtfPppVat"), d4=$("dtfTpVat");
 const dtfBlock=document.getElementById("dtfBlock");
 
-const vatRateLabel=document.createElement("span");
-vatRateLabel.id="vatRateLabel";
-document.querySelector(".foot .muted")?.querySelector("span")?.replaceWith(vatRateLabel);
-vatRateLabel.textContent=`(${(CONFIG.vatRate*100).toFixed(0)}%)`;
+// VAT label
+const vatRateLabel=$("vatRateLabel");
+vatRateLabel.textContent=`${(CONFIG.vatRate*100).toFixed(0)}%`;
 
 // --- state helpers
 function segSet(btnOn, btnOff, on){
@@ -415,7 +416,7 @@ $("share").addEventListener("click", async ()=>{
 // Register service worker if present (cache-bust param recommended)
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('./sw.js?v=4').catch(()=>{});
+    navigator.serviceWorker.register('./sw.js?v=5').catch(()=>{});
   });
 }
 </script>
