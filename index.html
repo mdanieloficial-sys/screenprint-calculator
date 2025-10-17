@@ -96,7 +96,7 @@
 
         <!-- Buttons: Neck label include/exclude -->
         <div class="row" style="grid-template-columns:1fr auto">
-          <label>Neck label (+5 lei after VAT)</label>
+          <label>Neck label (+5 lei incl. VAT)</label>
           <div class="seg" role="group" aria-label="Neck label">
             <button id="neckOn"  type="button" aria-pressed="true">Include</button>
             <button id="neckOff" type="button" aria-pressed="false">Exclude</button>
@@ -182,7 +182,7 @@
         </div>
 
         <div class="foot">
-          <div class="muted">VAT <span id="vatRateLabel"></span> applied. Neck label adds 5 lei after VAT.</div>
+          <div class="muted">VAT <span id="vatRateLabel">21%</span> applied. Neck label = 5 lei incl. VAT (auto-handled).</div>
           <button class="btn" id="copy">Copy outputs</button>
         </div>
       </div>
@@ -210,7 +210,7 @@ const CONFIG = {
   ],
   // DTF
   dtf_price_no_vat: 35,                 // lei / garment
-  neck_label_vat_inclusive_add: 5,      // adds 5 lei AFTER VAT per garment
+  neck_label_vat_inclusive_add: 5,      // 5 lei AFTER VAT
   precision: 2
 };
 
@@ -218,11 +218,16 @@ function getMarginRate(qty){
   for (var i=0;i<CONFIG.margin_tiers.length;i++){
     if (qty >= CONFIG.margin_tiers[i].min) return CONFIG.margin_tiers[i].rate;
   }
-  return CONFIG.margin_tiers[CONFIG.margin_tiers.length-1].rate; // safe fallback
+  return CONFIG.margin_tiers[CONFIG.margin_tiers.length-1].rate;
 }
 
 const $ = id=>document.getElementById(id);
 function fmt(x){ return Number(x||0).toLocaleString(undefined,{minimumFractionDigits:CONFIG.precision,maximumFractionDigits:CONFIG.precision}); }
+
+// Compute the neck label no-VAT portion that becomes +5 lei with VAT
+function neckNoVatAdd(){
+  return CONFIG.neck_label_vat_inclusive_add / (1 + CONFIG.vatRate);
+}
 
 // ------- Screen Print calc --------
 function calcScreen(garment, colors, volume, neckOn){
@@ -237,16 +242,16 @@ function calcScreen(garment, colors, volume, neckOn){
   unit_cost_no_vat *= (1 + CONFIG.overhead_rate);
 
   const margin = getMarginRate(v);
-  const pppNoVat = unit_cost_no_vat * (1 + margin);
+  var pppNoVat = unit_cost_no_vat * (1 + margin);
+
+  // Add neck label at NO-VAT level so VAT naturally becomes +5 lei
+  if(neckOn){ pppNoVat += neckNoVatAdd(); }
+
   const tpNoVat  = pppNoVat * v;
 
   var pppVat = pppNoVat * (1 + CONFIG.vatRate);
   var tpVat  = tpNoVat  * (1 + CONFIG.vatRate);
 
-  if(neckOn){
-    pppVat += CONFIG.neck_label_vat_inclusive_add;
-    tpVat  += CONFIG.neck_label_vat_inclusive_add * v;
-  }
   return { pppNoVat, tpNoVat, pppVat, tpVat };
 }
 
@@ -259,16 +264,15 @@ function calcDTF(garment, volume, neckOn){
   unit_cost_no_vat *= (1 + CONFIG.overhead_rate);
 
   const margin = getMarginRate(v);
-  const pppNoVat = unit_cost_no_vat * (1 + margin);
+  var pppNoVat = unit_cost_no_vat * (1 + margin);
+
+  if(neckOn){ pppNoVat += neckNoVatAdd(); }
+
   const tpNoVat  = pppNoVat * v;
 
   var pppVat = pppNoVat * (1 + CONFIG.vatRate);
   var tpVat  = tpNoVat  * (1 + CONFIG.vatRate);
 
-  if(neckOn){
-    pppVat += CONFIG.neck_label_vat_inclusive_add;
-    tpVat  += CONFIG.neck_label_vat_inclusive_add * v;
-  }
   return { pppNoVat, tpNoVat, pppVat, tpVat };
 }
 
@@ -283,10 +287,6 @@ const p1=$("pppNoVat"), t1=$("tpNoVat"), p2=$("pppVat"), t2=$("tpVat");
 // DTF outputs
 const d1=$("dtfPppNoVat"), d2=$("dtfTpNoVat"), d3=$("dtfPppVat"), d4=$("dtfTpVat");
 const dtfBlock=document.getElementById("dtfBlock");
-
-// VAT label
-const vatRateLabel=$("vatRateLabel");
-vatRateLabel.textContent=`${(CONFIG.vatRate*100).toFixed(0)}%`;
 
 // --- state helpers
 function segSet(btnOn, btnOff, on){
@@ -368,7 +368,6 @@ dtfOffBtn.addEventListener("click", ()=>{
   if(p.has("c")) colors.value  = p.get("c");
   if(p.has("v")) volume.value  = p.get("v");
 
-  // Buttons from query (n/d)
   const neckQ = p.get("n");
   if(neckQ==="0") segSet(neckOnBtn, neckOffBtn, false); else segSet(neckOnBtn, neckOffBtn, true);
 
@@ -391,7 +390,7 @@ Price per piece (no VAT): ${p1.textContent} ${CONFIG.currency}
 Total price (no VAT): ${t1.textContent} ${CONFIG.currency}
 Price per piece: ${p2.textContent} ${CONFIG.currency}
 Total price: ${t2.textContent} ${CONFIG.currency}
-${segGet(dtfOnBtn) ? `
+${(dtfBlock.style.display!=="none") ? `
 DTF
 Price per piece (no VAT): ${d1.textContent} ${CONFIG.currency}
 Total price (no VAT): ${d2.textContent} ${CONFIG.currency}
@@ -408,7 +407,7 @@ $("share").addEventListener("click", async ()=>{
   if(colors.value)  params.set("c", colors.value);
   if(volume.value)  params.set("v", volume.value);
   params.set("n", segGet(neckOnBtn) ? "1":"0");
-  params.set("d", segGet(dtfOnBtn)  ? "1":"0");
+  params.set("d", (dtfBlock.style.display!=="none") ? "1":"0");
   u.search = params.toString();
   try{ await navigator.clipboard.writeText(u.toString()); alert("Prefilled link copied."); }catch(e){ prompt("Copy this link:", u.toString()); }
 });
@@ -416,7 +415,7 @@ $("share").addEventListener("click", async ()=>{
 // Register service worker if present (cache-bust param recommended)
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('./sw.js?v=5').catch(()=>{});
+    navigator.serviceWorker.register('./sw.js?v=6').catch(()=>{});
   });
 }
 </script>
