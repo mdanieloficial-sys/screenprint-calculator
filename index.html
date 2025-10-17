@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -23,7 +24,7 @@
       background: radial-gradient(1200px 800px at 80% -20%, #1a1a1f 0%, #0b0b0c 60%);
       -webkit-touch-callout:none; -webkit-text-size-adjust:100%;
     }
-    .wrap{max-width:860px; margin: env(safe-area-inset-top) auto 0 auto;
+    .wrap{max-width:920px; margin: env(safe-area-inset-top) auto 0 auto;
       padding: clamp(16px, 3vw, 24px); padding-bottom: calc(16px + env(safe-area-inset-bottom));
     }
     .title{display:flex; align-items:center; gap:12px; margin-bottom:14px;}
@@ -33,9 +34,9 @@
       box-shadow:0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.05); overflow:hidden;
     }
     .grid{display:grid; grid-template-columns: 1fr 1fr;}
-    @media (max-width:820px){ .grid{grid-template-columns:1fr} }
+    @media (max-width:860px){ .grid{grid-template-columns:1fr} }
     .pane{padding:16px;} .pane + .pane{border-left:1px solid rgba(255,255,255,.06);}
-    @media (max-width:820px){ .pane + .pane{border-left:none; border-top:1px solid rgba(255,255,255,.06)} }
+    @media (max-width:860px){ .pane + .pane{border-left:none; border-top:1px solid rgba(255,255,255,.06)} }
     .row{display:grid; grid-template-columns: 1.3fr 1fr; align-items:center; gap:10px; margin:12px 0;}
     label{font-size:14px; color:var(--muted);}
     input, select{width:100%; background:#0e0e12; color:var(--ink);
@@ -49,18 +50,18 @@
     .muted{color:var(--muted); font-size:13px}
     .big{font-size:26px; font-weight:800; letter-spacing:.4px;}
     .foot{display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:10px; flex-wrap:wrap;}
-    .tiny{font-size:12px; color:var(--muted)}
     .btn{appearance:none; border:none; cursor:pointer; padding:10px 14px; border-radius:12px; font-weight:700;
       background:#111827; color:#e5e7eb; border:1px solid rgba(255,255,255,.1);}
     .btn:hover{filter:brightness(1.05)} .right{text-align:right}
-    .notice{margin-top:10px; padding:10px 12px; border-radius:12px; background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.35);
-      color:#fecaca; font-size:14px;}
+    .notice{margin-top:10px; padding:10px 12px; border-radius:12px; background:rgba(59,130,246,.12); border:1px solid rgba(59,130,246,.35);
+      color:#bfdbfe; font-size:14px;}
     .checkrow{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px;}
     .checkrow label{color:var(--ink); font-size:14px;}
     .switch{width:48px; height:28px; background:#1f2937; border:1px solid rgba(255,255,255,.15); border-radius:999px; position:relative;}
     .switch input{display:none}
     .knob{position:absolute; top:2px; left:2px; width:24px; height:24px; border-radius:999px; background:#9ca3af; transition:left .2s, background .2s;}
     .switch input:checked + .knob{left:22px; background:#10b981;}
+    .tag{font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.18); color:#e5e7eb; opacity:.85;}
   </style>
 </head>
 <body>
@@ -76,10 +77,13 @@
           <input id="garment" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 25.00" value="">
         </div>
         <div class="row">
-          <label for="colors">Number of colors (1–4)</label>
-          <select id="colors">
-            <option value="1">1</option><option value="2">2</option>
-            <option value="3">3</option><option value="4">4</option>
+          <label for="colors">Number of colors</label>
+          <select id="colors" title="5+ colors forces DTF">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5+">5 or more (DTF)</option>
           </select>
         </div>
         <div class="row">
@@ -87,6 +91,7 @@
           <input id="volume" type="number" inputmode="numeric" min="1" step="1" placeholder="e.g. 50" value="">
         </div>
 
+        <!-- Neck label toggle (adds 5 lei AFTER VAT) -->
         <div class="checkrow" title="Adds 5 lei per garment AFTER VAT">
           <label for="neck">Neck label (adds 5 lei per garment, with VAT)</label>
           <div class="switch">
@@ -95,20 +100,32 @@
           </div>
         </div>
 
+        <!-- DTF comparison toggle -->
+        <div class="checkrow" title="Show DTF pricing alongside screen print">
+          <label for="dtfToggle">Include DTF comparison</label>
+          <div style="display:flex; align-items:center; gap:8px">
+            <span id="dtfAutoTag" class="tag" style="display:none">auto</span>
+            <div class="switch">
+              <input id="dtfToggle" type="checkbox" checked>
+              <span class="knob"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- DTF heads-up -->
         <div id="dtfNote" class="notice" style="display:none">
-          For volumes under 10 we recommend <strong>DTF at 35 lei/garment</strong> (≈ <span id="dtfVat"></span> with VAT).
+          Auto-enabled DTF because <span id="dtfWhy"></span>.
         </div>
 
         <div class="foot">
-          <div class="tiny">Only these 3 inputs are required. Costs/VAT are fixed in CONFIG. Neck label is optional.</div>
-          <div style="flex:1"></div>
           <button class="btn" id="share">Share prefilled link</button>
           <button class="btn" id="reset">Reset</button>
         </div>
       </div>
 
       <div class="pane right">
-        <div class="muted">OUTPUTS (no VAT)</div>
+        <!-- Screen print outputs -->
+        <div class="muted">SCREEN PRINT — OUTPUTS (no VAT)</div>
         <div class="outputs">
           <div class="pill">
             <span>Price per piece (no VAT)</span>
@@ -120,7 +137,7 @@
           </div>
         </div>
         <div style="height:12px"></div>
-        <div class="muted">OUTPUTS</div>
+        <div class="muted">SCREEN PRINT — OUTPUTS</div>
         <div class="outputs">
           <div class="pill">
             <span>Price per piece</span>
@@ -131,8 +148,38 @@
             <span class="big" id="tpVat">0.00</span>
           </div>
         </div>
+
+        <div style="height:16px"></div>
+
+        <!-- DTF outputs (comparison) -->
+        <div id="dtfBlock" style="display:grid; gap:8px">
+          <div class="muted">DTF — OUTPUTS (no VAT)</div>
+          <div class="outputs">
+            <div class="pill">
+              <span>DTF price per piece (no VAT)</span>
+              <span class="big" id="dtfPppNoVat">0.00</span>
+            </div>
+            <div class="pill">
+              <span>DTF total price (no VAT)</span>
+              <span class="big" id="dtfTpNoVat">0.00</span>
+            </div>
+          </div>
+          <div style="height:12px"></div>
+          <div class="muted">DTF — OUTPUTS</div>
+          <div class="outputs">
+            <div class="pill">
+              <span>DTF price per piece</span>
+              <span class="big" id="dtfPppVat">0.00</span>
+            </div>
+            <div class="pill">
+              <span>DTF total price</span>
+              <span class="big" id="dtfTpVat">0.00</span>
+            </div>
+          </div>
+        </div>
+
         <div class="foot">
-          <div class="tiny">VAT <span id="vatRateLabel"></span> applied to outputs with VAT.</div>
+          <div class="muted">VAT <span id="vatRateLabel"></span> applied to outputs with VAT. Neck label adds 5 lei after VAT.</div>
           <button class="btn" id="copy">Copy outputs</button>
         </div>
       </div>
@@ -144,10 +191,12 @@
 const CONFIG = {
   currency: "lei",
   vatRate: 0.21,
-  setup_per_color: 50,
-  ink_per_color: 5,
-  labor_per_garment: 3,
-  overhead_rate: 0.10,
+  // Screen print cost model
+  setup_per_color: 50,   // lei / color (amortized)
+  ink_per_color: 5,      // lei / color
+  labor_per_garment: 3,  // lei / garment
+  overhead_rate: 0.10,   // +10%
+  // margin by volume
   margin_tiers: [
     { min: 200, rate: 0.35 },
     { min: 100, rate: 0.40 },
@@ -156,114 +205,186 @@ const CONFIG = {
     { min:  10, rate: 0.55 },
     { min:   1, rate: 0.55 }
   ],
-  dtf_price_no_vat: 35,
-  neck_label_vat_inclusive_add: 5,
+  // DTF
+  dtf_price_no_vat: 35,                 // lei / garment (print component)
+  neck_label_vat_inclusive_add: 5,      // adds 5 lei AFTER VAT per garment
   precision: 2
 };
 
 function getMarginRate(qty){
-  for(const t of CONFIG.margin_tiers){
-    if(qty >= t.min) return t.rate;
-  }
+  for(const t of CONFIG.margin_tiers){ if(qty >= t.min) return t.rate; }
   return CONFIG.margin_tiers.at(-1).rate;
 }
+const $ = id=>document.getElementById(id);
+function fmt(x){ return Number(x||0).toLocaleString(undefined,{minimumFractionDigits:CONFIG.precision,maximumFractionDigits:CONFIG.precision}); }
 
-function fmt(x){return Number(x||0).toLocaleString(undefined,{minimumFractionDigits:CONFIG.precision,maximumFractionDigits:CONFIG.precision});}
+// ------- Screen Print calc --------
+function calcScreen(garment, colors, volume, neckOn){
+  const c = Math.min(Math.max(colors,1),4); // cap at 4 for SP
+  const v = Math.max(1, Math.floor(volume||0));
 
-function calc(garment, colors, volume, neckOn){
-  colors = Math.min(Math.max(colors,1),4);
-  volume = Math.max(1, Math.floor(volume||0));
-
-  const setup_amort = (CONFIG.setup_per_color * colors) / volume;
-  const ink_cost = CONFIG.ink_per_color * colors;
+  const setup_amort = (CONFIG.setup_per_color * c) / v;
+  const ink_cost = CONFIG.ink_per_color * c;
   const labor = CONFIG.labor_per_garment;
 
   let unit_cost_no_vat = garment + setup_amort + ink_cost + labor;
   unit_cost_no_vat *= (1 + CONFIG.overhead_rate);
 
-  const margin = getMarginRate(volume);
+  const margin = getMarginRate(v);
   const pppNoVat = unit_cost_no_vat * (1 + margin);
-  const tpNoVat = pppNoVat * volume;
+  const tpNoVat  = pppNoVat * v;
 
   let pppVat = pppNoVat * (1 + CONFIG.vatRate);
-  let tpVat = tpNoVat * (1 + CONFIG.vatRate);
+  let tpVat  = tpNoVat  * (1 + CONFIG.vatRate);
 
-  // Add EXACT 5 lei per garment AFTER VAT
   if(neckOn){
     pppVat += CONFIG.neck_label_vat_inclusive_add;
-    tpVat += CONFIG.neck_label_vat_inclusive_add * volume;
+    tpVat  += CONFIG.neck_label_vat_inclusive_add * v;
   }
+  return { pppNoVat, tpNoVat, pppVat, tpVat };
+}
 
+// ------- DTF calc (comparison; uses same margin tiers/overhead) --------
+function calcDTF(garment, volume, neckOn){
+  const v = Math.max(1, Math.floor(volume||0));
+  const labor = CONFIG.labor_per_garment;
+
+  // DTF unit cost (no VAT): garment + flat DTF print + labor, then overhead
+  let unit_cost_no_vat = garment + CONFIG.dtf_price_no_vat + labor;
+  unit_cost_no_vat *= (1 + CONFIG.overhead_rate);
+
+  const margin = getMarginRate(v);
+  const pppNoVat = unit_cost_no_vat * (1 + margin);
+  const tpNoVat  = pppNoVat * v;
+
+  let pppVat = pppNoVat * (1 + CONFIG.vatRate);
+  let tpVat  = tpNoVat  * (1 + CONFIG.vatRate);
+
+  if(neckOn){
+    pppVat += CONFIG.neck_label_vat_inclusive_add;
+    tpVat  += CONFIG.neck_label_vat_inclusive_add * v;
+  }
   return { pppNoVat, tpNoVat, pppVat, tpVat };
 }
 
 // DOM refs
-const $ = id=>document.getElementById(id);
-const garment=$("garment"),colors=$("colors"),volume=$("volume"),neck=$("neck");
-const p1=$("pppNoVat"),t1=$("tpNoVat"),p2=$("pppVat"),t2=$("tpVat");
-const vatRateLabel=$("vatRateLabel"),dtfNote=$("dtfNote"),dtfVat=$("dtfVat");
+const garment=$("garment"), colors=$("colors"), volume=$("volume"), neck=$("neck");
+const dtfToggle=$("dtfToggle"), dtfAutoTag=$("dtfAutoTag"), dtfNote=$("dtfNote"), dtfWhy=$("dtfWhy");
 
+// SP outputs
+const p1=$("pppNoVat"), t1=$("tpNoVat"), p2=$("pppVat"), t2=$("tpVat");
+// DTF outputs
+const d1=$("dtfPppNoVat"), d2=$("dtfTpNoVat"), d3=$("dtfPppVat"), d4=$("dtfTpVat");
+const dtfBlock=document.getElementById("dtfBlock");
+
+const vatRateLabel=$("vatRateLabel");
 vatRateLabel.textContent=`(${(CONFIG.vatRate*100).toFixed(0)}%)`;
-dtfVat.textContent=fmt(CONFIG.dtf_price_no_vat*(1+CONFIG.vatRate))+" "+CONFIG.currency;
 
-function update(){
-  const g=parseFloat(garment.value||"0");
-  const c=parseInt(colors.value||"1",10);
-  const v=parseInt(volume.value||"1",10);
-  const neckOn=!!neck.checked;
+function autoDTFState(){
+  const colorsVal = colors.value;
+  const v = parseInt(volume.value||"1",10);
+  let forced = false, reason = "";
 
-  dtfNote.style.display=(v<10)?"block":"none";
+  if(colorsVal === "5+"){ forced = true; reason = "5+ colors"; }
+  else if(v < 10){ forced = true; reason = "< 10 pcs"; }
 
-  const out=calc(g,c,v,neckOn);
-  p1.textContent=fmt(out.pppNoVat);
-  t1.textContent=fmt(out.tpNoVat);
-  p2.textContent=fmt(out.pppVat);
-  t2.textContent=fmt(out.tpVat);
+  // Apply UI state
+  if(forced){
+    dtfToggle.checked = true;
+    dtfToggle.disabled = true;
+    dtfAutoTag.style.display = "inline-block";
+    dtfNote.style.display = "block";
+    dtfWhy.textContent = reason;
+  }else{
+    dtfToggle.disabled = false;
+    dtfAutoTag.style.display = "none";
+    dtfNote.style.display = "none";
+  }
 }
 
+function colorsToNumber(){
+  return (colors.value === "5+") ? 5 : parseInt(colors.value||"1",10);
+}
+
+function update(){
+  const g = parseFloat(garment.value || "0");
+  const c = colorsToNumber();
+  const v = parseInt(volume.value || "1",10);
+  const neckOn = !!neck.checked;
+
+  autoDTFState();
+
+  // Screen print
+  const sp = calcScreen(g, c, v, neckOn);
+  p1.textContent = fmt(sp.pppNoVat); t1.textContent = fmt(sp.tpNoVat);
+  p2.textContent = fmt(sp.pppVat);   t2.textContent = fmt(sp.tpVat);
+
+  // DTF comparison
+  if(dtfToggle.checked){
+    const dx = calcDTF(g, v, neckOn);
+    d1.textContent = fmt(dx.pppNoVat); d2.textContent = fmt(dx.tpNoVat);
+    d3.textContent = fmt(dx.pppVat);   d4.textContent = fmt(dx.tpVat);
+    dtfBlock.style.display = "grid";
+  }else{
+    dtfBlock.style.display = "none";
+  }
+}
+
+// listeners
 ["input","change"].forEach(ev=>{
-  garment.addEventListener(ev,update);
-  colors.addEventListener(ev,update);
-  volume.addEventListener(ev,update);
-  neck.addEventListener(ev,update);
+  garment.addEventListener(ev, update);
+  colors.addEventListener(ev, update);
+  volume.addEventListener(ev, update);
+  neck.addEventListener(ev, update);
+  dtfToggle.addEventListener(ev, update);
 });
 
+// prefill from query
 (function prefill(){
-  const p=new URLSearchParams(location.search);
-  if(p.has("g"))garment.value=p.get("g");
-  if(p.has("c"))colors.value=p.get("c");
-  if(p.has("v"))volume.value=p.get("v");
-  if(p.has("n"))neck.checked=p.get("n")==="1";
+  const p = new URLSearchParams(location.search);
+  if(p.has("g")) garment.value = p.get("g");
+  if(p.has("c")) colors.value = p.get("c");
+  if(p.has("v")) volume.value = p.get("v");
+  if(p.has("n")) neck.checked = p.get("n") === "1";
+  if(p.has("d")) dtfToggle.checked = p.get("d") === "1";
   update();
 })();
 
-$("reset").addEventListener("click",()=>{
-  garment.value="";colors.value="1";volume.value="";neck.checked=true;update();
+$("reset").addEventListener("click", ()=>{
+  garment.value=""; colors.value="1"; volume.value=""; neck.checked = true; dtfToggle.checked = true; update();
 });
 
-$("copy").addEventListener("click",async()=>{
-  const text=`Price per piece (no VAT): ${p1.textContent} ${CONFIG.currency}
+$("copy").addEventListener("click", async ()=>{
+  const text = `SCREEN PRINT
+Price per piece (no VAT): ${p1.textContent} ${CONFIG.currency}
 Total price (no VAT): ${t1.textContent} ${CONFIG.currency}
 Price per piece: ${p2.textContent} ${CONFIG.currency}
-Total price: ${t2.textContent} ${CONFIG.currency}`;
-  try{await navigator.clipboard.writeText(text);alert("Outputs copied.");}
-  catch(e){alert("Copy failed. Select and copy manually.");}
+Total price: ${t2.textContent} ${CONFIG.currency}
+${dtfToggle.checked ? `
+DTF
+Price per piece (no VAT): ${d1.textContent} ${CONFIG.currency}
+Total price (no VAT): ${d2.textContent} ${CONFIG.currency}
+Price per piece: ${d3.textContent} ${CONFIG.currency}
+Total price: ${d4.textContent} ${CONFIG.currency}
+` : ""}`.trim();
+  try{ await navigator.clipboard.writeText(text); alert("Outputs copied."); }catch(e){ alert("Copy failed. Select and copy manually."); }
 });
 
-$("share").addEventListener("click",async()=>{
-  const u=new URL(location.href);
-  const params=new URLSearchParams();
-  if(garment.value)params.set("g",garment.value);
-  if(colors.value)params.set("c",colors.value);
-  if(volume.value)params.set("v",volume.value);
-  params.set("n",neck.checked?"1":"0");
-  u.search=params.toString();
-  try{await navigator.clipboard.writeText(u.toString());alert("Prefilled link copied.");}
-  catch(e){prompt("Copy this link:",u.toString());}
+$("share").addEventListener("click", async ()=>{
+  const u = new URL(location.href);
+  const params = new URLSearchParams();
+  if(garment.value) params.set("g", garment.value);
+  if(colors.value)  params.set("c", colors.value);
+  if(volume.value)  params.set("v", volume.value);
+  params.set("n", neck.checked ? "1" : "0");
+  params.set("d", dtfToggle.checked ? "1" : "0");
+  u.search = params.toString();
+  try{ await navigator.clipboard.writeText(u.toString()); alert("Prefilled link copied."); }catch(e){ prompt("Copy this link:", u.toString()); }
 });
 
+// Register service worker if present
 if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
+  window.addEventListener('load', ()=>{
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
   });
 }
