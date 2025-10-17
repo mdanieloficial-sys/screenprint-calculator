@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Screen Print Calculator</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0b0b0c">
+  <!-- iOS PWA meta -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Print Calc">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="format-detection" content="telephone=no">
+  <style>
+    :root{
+      --bg:#0b0b0c;
+      --card:#121216;
+      --ink:#eaeaea;
+      --muted:#9a9aa1;
+      --accent:#f4f4f6;
+      --focus:#3b82f6;
+      --danger:#ef4444;
+      --ring: 0 0 0 3px rgba(59,130,246,.35);
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--ink);
+      background: radial-gradient(1200px 800px at 80% -20%, #1a1a1f 0%, #0b0b0c 60%);
+      -webkit-touch-callout:none; -webkit-text-size-adjust: 100%;
+    }
+    .wrap{
+      max-width:860px;
+      margin: env(safe-area-inset-top) auto 0 auto;
+      padding: clamp(16px, 3vw, 24px);
+      padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    }
+    .title{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      margin-bottom:14px;
+    }
+    .badge{
+      font-size:12px;
+      color:#0b0b0c;
+      background:#d1fae5;
+      padding:4px 8px;
+      border-radius:999px;
+      font-weight:700;
+      letter-spacing:.3px;
+    }
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:var(--radius);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.05);
+      overflow:hidden;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    @media (max-width: 820px){
+      .grid{grid-template-columns: 1fr}
+    }
+    .pane{ padding:16px; }
+    .pane + .pane{ border-left:1px solid rgba(255,255,255,.06); }
+    @media (max-width: 820px){
+      .pane + .pane{ border-left:none; border-top:1px solid rgba(255,255,255,.06)}
+    }
+    .row{
+      display:grid;
+      grid-template-columns: 1.3fr 1fr;
+      align-items:center;
+      gap:10px;
+      margin: 12px 0;
+    }
+    label{ font-size:14px; color:var(--muted); }
+    input, select{
+      width:100%;
+      background:#0e0e12;
+      color:var(--ink);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:12px;
+      padding:12px 14px;
+      font-size:16px;
+      outline:none;
+      transition:.2s border-color,.2s box-shadow;
+    }
+    input:focus, select:focus{
+      border-color:var(--focus);
+      box-shadow: var(--ring);
+    }
+    .outputs{ display:grid; gap:10px; margin-top:12px; }
+    .pill{
+      background:#0e0e12;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      padding:12px 14px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size:16px;
+    }
+    .muted{color:var(--muted); font-size:13px}
+    .big{ font-size:26px; font-weight:800; letter-spacing:.4px; }
+    .foot{ display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:10px; flex-wrap:wrap; }
+    .tiny{font-size:12px; color:var(--muted)}
+    .btn{
+      appearance:none; border:none; cursor:pointer;
+      padding:10px 14px; border-radius:12px; font-weight:700;
+      background:#111827; color:#e5e7eb; border:1px solid rgba(255,255,255,.1);
+    }
+    .btn:hover{filter:brightness(1.05)}
+    .right{ text-align:right }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">
+      <h1 style="margin:0">Screen Print Calculator</h1>
+      <span class="badge">PWA</span>
+    </div>
+    <div class="card grid">
+      <div class="pane">
+        <div class="row">
+          <label for="garment">Garment price / piece (no VAT)</label>
+          <input id="garment" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 25.00">
+        </div>
+        <div class="row">
+          <label for="colors">Number of colors (1–4)</label>
+          <select id="colors">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="volume">Volume (pcs)</label>
+          <input id="volume" type="number" inputmode="numeric" min="1" step="1" placeholder="e.g. 50">
+        </div>
+        <div class="foot">
+          <div class="tiny">Only these 3 inputs are visible. Costs/VAT in CONFIG.</div>
+          <div style="flex:1"></div>
+          <button class="btn" id="share">Share prefilled link</button>
+          <button class="btn" id="reset">Reset</button>
+        </div>
+      </div>
+      <div class="pane right">
+        <div class="muted">OUTPUTS (no VAT)</div>
+        <div class="outputs">
+          <div class="pill">
+            <span>Price per piece (no VAT)</span>
+            <span class="big" id="pppNoVat">0.00</span>
+          </div>
+          <div class="pill">
+            <span>Total price (no VAT)</span>
+            <span class="big" id="tpNoVat">0.00</span>
+          </div>
+        </div>
+        <div style="height:12px"></div>
+        <div class="muted">OUTPUTS</div>
+        <div class="outputs">
+          <div class="pill">
+            <span>Price per piece</span>
+            <span class="big" id="pppVat">0.00</span>
+          </div>
+          <div class="pill">
+            <span>Total price</span>
+            <span class="big" id="tpVat">0.00</span>
+          </div>
+        </div>
+        <div class="foot">
+          <div class="tiny">VAT <span id="vatRateLabel"></span> applied to outputs with VAT.</div>
+          <button class="btn" id="copy">Copy outputs</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ===== CONFIG =====
+const CONFIG = {
+  currency: "lei",
+  vatRate: 0.21,
+  base_setup_per_color: 30,
+  base_run_cost: 6,
+  per_color_run_cost: 2.5,
+  tier_discounts: { 1:1.00, 20:0.95, 50:0.90, 100:0.85, 250:0.80, 500:0.75 },
+  precision: 2
+};
+
+function tierMultiplier(qty){
+  let bestKey = 1;
+  for(const k of Object.keys(CONFIG.tier_discounts).map(Number).sort((a,b)=>a-b)){
+    if(qty >= k) bestKey = k;
+  }
+  return CONFIG.tier_discounts[bestKey];
+}
+function fmt(x){ return Number(x||0).toLocaleString(undefined,{minimumFractionDigits:CONFIG.precision,maximumFractionDigits:CONFIG.precision}); }
+function calc(garment, colors, volume){
+  colors = Math.min(Math.max(colors,1),4);
+  volume = Math.max(1, Math.floor(volume||0));
+  const m = tierMultiplier(volume);
+  const setup_amort = (CONFIG.base_setup_per_color * colors) / volume;
+  const effective_run = (CONFIG.base_run_cost + CONFIG.per_color_run_cost * colors) * m;
+  const pppNoVat = garment + setup_amort + effective_run;
+  const tpNoVat = pppNoVat * volume;
+  const pppVat = pppNoVat * (1 + CONFIG.vatRate);
+  const tpVat = tpNoVat * (1 + CONFIG.vatRate);
+  return { pppNoVat, tpNoVat, pppVat, tpVat };
+}
+const $ = id => document.getElementById(id);
+const garment = $("garment"), colors = $("colors"), volume = $("volume");
+const p1 = $("pppNoVat"), t1 = $("tpNoVat"), p2 = $("pppVat"), t2 = $("tpVat");
+const vatRateLabel = $("vatRateLabel");
+vatRateLabel.textContent = `(${(CONFIG.vatRate*100).toFixed(0)}%)`;
+function update(){
+  const g = parseFloat(garment.value || "0");
+  const c = parseInt(colors.value || "1",10);
+  const v = parseInt(volume.value || "1",10);
+  const out = calc(g,c,v);
+  p1.textContent = fmt(out.pppNoVat);
+  t1.textContent = fmt(out.tpNoVat);
+  p2.textContent = fmt(out.pppVat);
+  t2.textContent = fmt(out.tpVat);
+}
+["input","change"].forEach(ev=>{
+  garment.addEventListener(ev, update);
+  colors.addEventListener(ev, update);
+  volume.addEventListener(ev, update);
+});
+(function prefill(){
+  const p = new URLSearchParams(location.search);
+  if(p.has("g")) garment.value = p.get("g");
+  if(p.has("c")) colors.value = p.get("c");
+  if(p.has("v")) volume.value = p.get("v");
+  update();
+})();
+$("reset").addEventListener("click", ()=>{ garment.value=""; colors.value="1"; volume.value=""; update(); });
+$("copy").addEventListener("click", async ()=>{
+  const text = `Price per piece (no VAT): ${p1.textContent} ${CONFIG.currency}
+Total price (no VAT): ${t1.textContent} ${CONFIG.currency}
+Price per piece: ${p2.textContent} ${CONFIG.currency}
+Total price: ${t2.textContent} ${CONFIG.currency}`;
+  try{ await navigator.clipboard.writeText(text); alert("Outputs copied."); }catch(e){ alert("Copy failed. Select and copy manually."); }
+});
+$("share").addEventListener("click", async ()=>{
+  const u = new URL(location.href);
+  const params = new URLSearchParams();
+  if(garment.value) params.set("g", garment.value);
+  if(colors.value)  params.set("c", colors.value);
+  if(volume.value)  params.set("v", volume.value);
+  u.search = params.toString();
+  try{ await navigator.clipboard.writeText(u.toString()); alert("Prefilled link copied."); }catch(e){ prompt("Copy this link:", u.toString()); }
+});
+// Register service worker
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
