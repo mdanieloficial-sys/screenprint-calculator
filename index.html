@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -44,6 +43,14 @@
       transition:.2s border-color,.2s box-shadow;
     }
     input:focus, select:focus{border-color:var(--focus); box-shadow:var(--ring);}
+    .seg{display:inline-flex; background:#0e0e12; border:1px solid rgba(255,255,255,.12); border-radius:12px; overflow:hidden}
+    .seg button{
+      appearance:none; background:transparent; color:#e5e7eb; border:0; padding:8px 12px; cursor:pointer; font-weight:700;
+    }
+    .seg button + button{border-left:1px solid rgba(255,255,255,.12)}
+    .seg button[aria-pressed="true"]{background:#1f2937}
+    .seg button[disabled]{opacity:.5; cursor:not-allowed}
+    .tag{font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.18); color:#e5e7eb; opacity:.85; margin-left:8px}
     .outputs{display:grid; gap:10px; margin-top:12px;}
     .pill{background:#0e0e12; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:12px 14px;
       display:flex; justify-content:space-between; align-items:center; font-size:16px;}
@@ -55,13 +62,6 @@
     .btn:hover{filter:brightness(1.05)} .right{text-align:right}
     .notice{margin-top:10px; padding:10px 12px; border-radius:12px; background:rgba(59,130,246,.12); border:1px solid rgba(59,130,246,.35);
       color:#bfdbfe; font-size:14px;}
-    .checkrow{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px;}
-    .checkrow label{color:var(--ink); font-size:14px;}
-    .switch{width:48px; height:28px; background:#1f2937; border:1px solid rgba(255,255,255,.15); border-radius:999px; position:relative;}
-    .switch input{display:none}
-    .knob{position:absolute; top:2px; left:2px; width:24px; height:24px; border-radius:999px; background:#9ca3af; transition:left .2s, background .2s;}
-    .switch input:checked + .knob{left:22px; background:#10b981;}
-    .tag{font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.18); color:#e5e7eb; opacity:.85;}
   </style>
 </head>
 <body>
@@ -70,12 +70,14 @@
       <h1 style="margin:0">Screen Print Calculator</h1>
       <span class="badge">PWA</span>
     </div>
+
     <div class="card grid">
       <div class="pane">
         <div class="row">
           <label for="garment">Garment price / piece (no VAT)</label>
           <input id="garment" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 25.00" value="">
         </div>
+
         <div class="row">
           <label for="colors">Number of colors</label>
           <select id="colors" title="5+ colors forces DTF">
@@ -86,35 +88,36 @@
             <option value="5+">5 or more (DTF)</option>
           </select>
         </div>
+
         <div class="row">
           <label for="volume">Volume (pcs)</label>
           <input id="volume" type="number" inputmode="numeric" min="1" step="1" placeholder="e.g. 50" value="">
         </div>
 
-        <!-- Neck label toggle (adds 5 lei AFTER VAT) -->
-        <div class="checkrow" title="Adds 5 lei per garment AFTER VAT">
-          <label for="neck">Neck label (adds 5 lei per garment, with VAT)</label>
-          <div class="switch">
-            <input id="neck" type="checkbox" checked>
-            <span class="knob"></span>
+        <!-- Buttons: Neck label include/exclude -->
+        <div class="row" style="grid-template-columns:1fr auto">
+          <label>Neck label (+5 lei after VAT)</label>
+          <div class="seg" role="group" aria-label="Neck label">
+            <button id="neckOn"  type="button" aria-pressed="true">Include</button>
+            <button id="neckOff" type="button" aria-pressed="false">Exclude</button>
           </div>
         </div>
 
-        <!-- DTF comparison toggle -->
-        <div class="checkrow" title="Show DTF pricing alongside screen print">
-          <label for="dtfToggle">Include DTF comparison</label>
-          <div style="display:flex; align-items:center; gap:8px">
-            <span id="dtfAutoTag" class="tag" style="display:none">auto</span>
-            <div class="switch">
-              <input id="dtfToggle" type="checkbox" checked>
-              <span class="knob"></span>
+        <!-- Buttons: DTF comparison include/exclude -->
+        <div class="row" style="grid-template-columns:1fr auto">
+          <label>DTF comparison</label>
+          <div>
+            <div class="seg" role="group" aria-label="DTF compare">
+              <button id="dtfOn"  type="button" aria-pressed="true">Include</button>
+              <button id="dtfOff" type="button" aria-pressed="false">Exclude</button>
             </div>
+            <span id="dtfAutoTag" class="tag" style="display:none">auto</span>
           </div>
         </div>
 
-        <!-- DTF heads-up -->
+        <!-- Auto note -->
         <div id="dtfNote" class="notice" style="display:none">
-          Auto-enabled DTF because <span id="dtfWhy"></span>.
+          DTF is auto-enabled because <span id="dtfWhy"></span>.
         </div>
 
         <div class="foot">
@@ -152,7 +155,7 @@
         <div style="height:16px"></div>
 
         <!-- DTF outputs (comparison) -->
-        <div id="dtfBlock" style="display:grid; gap:8px">
+        <div id="dtfBlock" style="display:none; gap:8px">
           <div class="muted">DTF — OUTPUTS (no VAT)</div>
           <div class="outputs">
             <div class="pill">
@@ -179,7 +182,7 @@
         </div>
 
         <div class="foot">
-          <div class="muted">VAT <span id="vatRateLabel"></span> applied to outputs with VAT. Neck label adds 5 lei after VAT.</div>
+          <div class="muted">VAT <span id="vatRateLabel"></span> applied. Neck label adds 5 lei after VAT.</div>
           <button class="btn" id="copy">Copy outputs</button>
         </div>
       </div>
@@ -206,7 +209,7 @@ const CONFIG = {
     { min:   1, rate: 0.55 }
   ],
   // DTF
-  dtf_price_no_vat: 35,                 // lei / garment (print component)
+  dtf_price_no_vat: 35,                 // lei / garment
   neck_label_vat_inclusive_add: 5,      // adds 5 lei AFTER VAT per garment
   precision: 2
 };
@@ -215,6 +218,7 @@ function getMarginRate(qty){
   for(const t of CONFIG.margin_tiers){ if(qty >= t.min) return t.rate; }
   return CONFIG.margin_tiers.at(-1).rate;
 }
+
 const $ = id=>document.getElementById(id);
 function fmt(x){ return Number(x||0).toLocaleString(undefined,{minimumFractionDigits:CONFIG.precision,maximumFractionDigits:CONFIG.precision}); }
 
@@ -249,7 +253,6 @@ function calcDTF(garment, volume, neckOn){
   const v = Math.max(1, Math.floor(volume||0));
   const labor = CONFIG.labor_per_garment;
 
-  // DTF unit cost (no VAT): garment + flat DTF print + labor, then overhead
   let unit_cost_no_vat = garment + CONFIG.dtf_price_no_vat + labor;
   unit_cost_no_vat *= (1 + CONFIG.overhead_rate);
 
@@ -267,9 +270,11 @@ function calcDTF(garment, volume, neckOn){
   return { pppNoVat, tpNoVat, pppVat, tpVat };
 }
 
-// DOM refs
-const garment=$("garment"), colors=$("colors"), volume=$("volume"), neck=$("neck");
-const dtfToggle=$("dtfToggle"), dtfAutoTag=$("dtfAutoTag"), dtfNote=$("dtfNote"), dtfWhy=$("dtfWhy");
+// ---- DOM refs
+const garment=$("garment"), colors=$("colors"), volume=$("volume");
+const neckOnBtn=$("neckOn"), neckOffBtn=$("neckOff");
+const dtfOnBtn=$("dtfOn"), dtfOffBtn=$("dtfOff");
+const dtfAutoTag=$("dtfAutoTag"), dtfNote=$("dtfNote"), dtfWhy=$("dtfWhy");
 
 // SP outputs
 const p1=$("pppNoVat"), t1=$("tpNoVat"), p2=$("pppVat"), t2=$("tpVat");
@@ -277,81 +282,106 @@ const p1=$("pppNoVat"), t1=$("tpNoVat"), p2=$("pppVat"), t2=$("tpVat");
 const d1=$("dtfPppNoVat"), d2=$("dtfTpNoVat"), d3=$("dtfPppVat"), d4=$("dtfTpVat");
 const dtfBlock=document.getElementById("dtfBlock");
 
-const vatRateLabel=$("vatRateLabel");
+const vatRateLabel=document.createElement("span");
+vatRateLabel.id="vatRateLabel";
+document.querySelector(".foot .muted")?.querySelector("span")?.replaceWith(vatRateLabel);
 vatRateLabel.textContent=`(${(CONFIG.vatRate*100).toFixed(0)}%)`;
 
-function autoDTFState(){
-  const colorsVal = colors.value;
+// --- state helpers
+function segSet(btnOn, btnOff, on){
+  btnOn.setAttribute("aria-pressed", on ? "true":"false");
+  btnOff.setAttribute("aria-pressed", on ? "false":"true");
+}
+function segGet(btnOn){ return btnOn.getAttribute("aria-pressed")==="true"; }
+
+function forcedDTFReason(){
   const v = parseInt(volume.value||"1",10);
-  let forced = false, reason = "";
-
-  if(colorsVal === "5+"){ forced = true; reason = "5+ colors"; }
-  else if(v < 10){ forced = true; reason = "< 10 pcs"; }
-
-  // Apply UI state
-  if(forced){
-    dtfToggle.checked = true;
-    dtfToggle.disabled = true;
-    dtfAutoTag.style.display = "inline-block";
-    dtfNote.style.display = "block";
-    dtfWhy.textContent = reason;
-  }else{
-    dtfToggle.disabled = false;
-    dtfAutoTag.style.display = "none";
-    dtfNote.style.display = "none";
-  }
+  if(colors.value==="5+") return "5+ colors";
+  if(v < 10) return "< 10 pcs";
+  return "";
 }
 
-function colorsToNumber(){
-  return (colors.value === "5+") ? 5 : parseInt(colors.value||"1",10);
+function applyDTFForceUI(reason){
+  const forced = !!reason;
+  dtfOnBtn.disabled = forced;
+  dtfOffBtn.disabled = forced;
+  dtfAutoTag.style.display = forced ? "inline-block" : "none";
+  dtfNote.style.display = forced ? "block" : "none";
+  dtfWhy.textContent = reason || "";
+  if(forced){ segSet(dtfOnBtn, dtfOffBtn, true); }
 }
 
+function colorsToNumber(){ return (colors.value==="5+") ? 5 : parseInt(colors.value||"1",10); }
+
+// --- main update
 function update(){
   const g = parseFloat(garment.value || "0");
   const c = colorsToNumber();
   const v = parseInt(volume.value || "1",10);
-  const neckOn = !!neck.checked;
+  const neckOn = segGet(neckOnBtn);
 
-  autoDTFState();
+  // DTF enforce based on rules
+  const reason = forcedDTFReason();
+  applyDTFForceUI(reason);
 
-  // Screen print
+  // Screen print calc
   const sp = calcScreen(g, c, v, neckOn);
   p1.textContent = fmt(sp.pppNoVat); t1.textContent = fmt(sp.tpNoVat);
   p2.textContent = fmt(sp.pppVat);   t2.textContent = fmt(sp.tpVat);
 
-  // DTF comparison
-  if(dtfToggle.checked){
+  // DTF block visibility & calc
+  const dtfOn = segGet(dtfOnBtn);
+  if(dtfOn){
     const dx = calcDTF(g, v, neckOn);
     d1.textContent = fmt(dx.pppNoVat); d2.textContent = fmt(dx.tpNoVat);
     d3.textContent = fmt(dx.pppVat);   d4.textContent = fmt(dx.tpVat);
     dtfBlock.style.display = "grid";
-  }else{
+  } else {
     dtfBlock.style.display = "none";
   }
 }
 
-// listeners
+// --- listeners
 ["input","change"].forEach(ev=>{
   garment.addEventListener(ev, update);
   colors.addEventListener(ev, update);
   volume.addEventListener(ev, update);
-  neck.addEventListener(ev, update);
-  dtfToggle.addEventListener(ev, update);
+});
+
+neckOnBtn.addEventListener("click", ()=>{ segSet(neckOnBtn, neckOffBtn, true); update(); });
+neckOffBtn.addEventListener("click", ()=>{ segSet(neckOnBtn, neckOffBtn, false); update(); });
+
+dtfOnBtn.addEventListener("click", ()=>{
+  if(dtfOnBtn.disabled) return; // forced
+  segSet(dtfOnBtn, dtfOffBtn, true); update();
+});
+dtfOffBtn.addEventListener("click", ()=>{
+  if(dtfOffBtn.disabled) return; // forced
+  segSet(dtfOnBtn, dtfOffBtn, false); update();
 });
 
 // prefill from query
 (function prefill(){
   const p = new URLSearchParams(location.search);
   if(p.has("g")) garment.value = p.get("g");
-  if(p.has("c")) colors.value = p.get("c");
-  if(p.has("v")) volume.value = p.get("v");
-  if(p.has("n")) neck.checked = p.get("n") === "1";
-  if(p.has("d")) dtfToggle.checked = p.get("d") === "1";
+  if(p.has("c")) colors.value  = p.get("c");
+  if(p.has("v")) volume.value  = p.get("v");
+
+  // Buttons from query (n/d)
+  const neckQ = p.get("n");
+  if(neckQ==="0") segSet(neckOnBtn, neckOffBtn, false); else segSet(neckOnBtn, neckOffBtn, true);
+
+  const dtfQ = p.get("d");
+  if(dtfQ==="0") segSet(dtfOnBtn, dtfOffBtn, false); else segSet(dtfOnBtn, dtfOffBtn, true);
+
   update();
 })();
 
 $("reset").addEventListener("click", ()=>{
-  garment.value=""; colors.value="1"; volume.value=""; neck.checked = true; dtfToggle.checked = true; update();
+  garment.value=""; colors.value="1"; volume.value="";
+  segSet(neckOnBtn, neckOffBtn, true);
+  segSet(dtfOnBtn, dtfOffBtn, true);
+  update();
 });
 
 $("copy").addEventListener("click", async ()=>{
@@ -360,7 +390,7 @@ Price per piece (no VAT): ${p1.textContent} ${CONFIG.currency}
 Total price (no VAT): ${t1.textContent} ${CONFIG.currency}
 Price per piece: ${p2.textContent} ${CONFIG.currency}
 Total price: ${t2.textContent} ${CONFIG.currency}
-${dtfToggle.checked ? `
+${segGet(dtfOnBtn) ? `
 DTF
 Price per piece (no VAT): ${d1.textContent} ${CONFIG.currency}
 Total price (no VAT): ${d2.textContent} ${CONFIG.currency}
@@ -376,18 +406,7 @@ $("share").addEventListener("click", async ()=>{
   if(garment.value) params.set("g", garment.value);
   if(colors.value)  params.set("c", colors.value);
   if(volume.value)  params.set("v", volume.value);
-  params.set("n", neck.checked ? "1" : "0");
-  params.set("d", dtfToggle.checked ? "1" : "0");
+  params.set("n", segGet(neckOnBtn) ? "1":"0");
+  params.set("d", segGet(dtfOnBtn)  ? "1":"0");
   u.search = params.toString();
-  try{ await navigator.clipboard.writeText(u.toString()); alert("Prefilled link copied."); }catch(e){ prompt("Copy this link:", u.toString()); }
-});
-
-// Register service worker if present
-if('serviceWorker' in navigator){
-  window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('./sw.js').catch(()=>{});
-  });
-}
-</script>
-</body>
-</html>
+  try{ await navigator.clipboard.writeText(u.toString()); alert("Prefilled link copied."); }catch(e){
