@@ -409,4 +409,15 @@ $("share").addEventListener("click", async ()=>{
   params.set("n", segGet(neckOnBtn) ? "1":"0");
   params.set("d", segGet(dtfOnBtn)  ? "1":"0");
   u.search = params.toString();
-  try{ await navigator.clipboard.writeText(u.toString()); alert("Prefilled link copied."); }catch(e){
+  try{ await navigator.clipboard.writeText(u.toString()); alert("Prefilled link copied."); }catch(e){ prompt("Copy this link:", u.toString()); }
+});
+
+// Register service worker if present (cache-bust param recommended)
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js?v=4').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
