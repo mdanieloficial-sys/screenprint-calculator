@@ -325,10 +325,17 @@ function update(){
   const reason = forcedDTFReason();
   applyDTFForceUI(reason);
 
-  // Screen print calc
-  const sp = calcScreen(g, c, v, neckOn);
-  p1.textContent = fmt(sp.pppNoVat); t1.textContent = fmt(sp.tpNoVat);
-  p2.textContent = fmt(sp.pppVat);   t2.textContent = fmt(sp.tpVat);
+  // If 5+ colors => SP not available
+  const spBlocked = (colors.value === "5+");
+
+  if(spBlocked){
+    p1.textContent = "N/A"; t1.textContent = "N/A";
+    p2.textContent = "N/A"; t2.textContent = "N/A";
+  }else{
+    const sp = calcScreen(g, c, v, neckOn);
+    p1.textContent = fmt(sp.pppNoVat); t1.textContent = fmt(sp.tpNoVat);
+    p2.textContent = fmt(sp.pppVat);   t2.textContent = fmt(sp.tpVat);
+  }
 
   // DTF block visibility & calc
   const dtfOn = segGet(dtfOnBtn);
@@ -340,7 +347,11 @@ function update(){
   } else {
     dtfBlock.style.display = "none";
   }
+
+  // Margin badge + profit target
+  renderTierAndTarget(g, c, v, neckOn, spBlocked, dtfOn);
 }
+
 
 // --- listeners
 ["input","change"].forEach(ev=>{
