@@ -185,6 +185,36 @@
           <div class="muted">VAT <span id="vatRateLabel">21%</span> applied. Neck label = 5 lei incl. VAT (auto-handled).</div>
           <button class="btn" id="copy">Copy outputs</button>
         </div>
+
+        <!-- KPI / Target profit widget -->
+        <div id="kpi" class="notice" style="margin-top:12px; display:block">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+            <span>Applied margin: <b id="tierLabel">—</b></span>
+            <span>Profit/unit (no VAT): <b id="ppu">0.00</b> lei</span>
+            <label style="margin-left:auto">Target net profit:
+              <input id="targetProfit" type="number" inputmode="decimal" min="0" step="100" value="10000" style="width:130px; margin-left:6px">
+            </label>
+            <span>Needed volume (SP): <b id="needSp">—</b></span>
+            <span>Needed volume (DTF): <b id="needDtf">—</b></span>
+          </div>
+        </div>
+
+        <!-- Profit breakdown toggle + box -->
+        <div class="foot" style="margin-top:16px">
+          <button class="btn" id="toggleProfit">Show profit breakdown</button>
+        </div>
+        <div id="profitBox" class="notice" style="display:none; margin-top:10px">
+          <div><b>Active method:</b> <span id="activeMethod">—</span></div>
+          <div><b>Volume:</b> <span id="pbVolume">—</span> pcs</div>
+          <div><b>Total Revenue (no VAT):</b> <span id="pbRevenue">0.00</span> lei</div>
+          <div><b>Total Cost (no VAT):</b> <span id="pbCost">0.00</span> lei</div>
+          <div><b>Gross Profit (no VAT):</b> <span id="pbGross">0.00</span> lei</div>
+          <div><b>Micro tax (3%):</b> <span id="pbTax">0.00</span> lei</div>
+          <div><b>Net Profit:</b> <span id="pbNet">0.00</span> lei</div>
+          <div style="margin-top:8px; font-size:13px; opacity:.8">
+            *Net profit = after micro-enterprise tax, before personal withdrawals.
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -194,12 +224,15 @@
 const CONFIG = {
   currency: "lei",
   vatRate: 0.21,
+  micro_tax_rate: 0.03, // pentru calcul volum net target + breakdown
+
   // Screen print cost model
   setup_per_color: 50,   // lei / color (amortized)
   ink_per_color: 5,      // lei / color
   labor_per_garment: 3,  // lei / garment
-  overhead_rate: 0.10,   // +10%
-  // margin by volume
+  overhead_rate: 0.10,   // +10% overhead
+
+  // margin by volume (DESCENDING by min!)
   margin_tiers: [
     { min: 200, rate: 0.35 },
     { min: 100, rate: 0.40 },
@@ -208,8 +241,9 @@ const CONFIG = {
     { min:  10, rate: 0.55 },
     { min:   1, rate: 0.55 }
   ],
+
   // DTF
-  dtf_price_no_vat: 35,                 // lei / garment
+  dtf_price_no_vat: 35,                 // lei / garment (no VAT)
   neck_label_vat_inclusive_add: 5,      // 5 lei AFTER VAT
   precision: 2
 };
@@ -238,42 +272,41 @@ function calcScreen(garment, colors, volume, neckOn){
   const ink_cost = CONFIG.ink_per_color * c;
   const labor = CONFIG.labor_per_garment;
 
-  var unit_cost_no_vat = garment + setup_amort + ink_cost + labor;
+  let unit_cost_no_vat = garment + setup_amort + ink_cost + labor;
   unit_cost_no_vat *= (1 + CONFIG.overhead_rate);
 
   const margin = getMarginRate(v);
-  var pppNoVat = unit_cost_no_vat * (1 + margin);
+  let pppNoVat = unit_cost_no_vat * (1 + margin);
 
   // Add neck label at NO-VAT level so VAT naturally becomes +5 lei
   if(neckOn){ pppNoVat += neckNoVatAdd(); }
 
   const tpNoVat  = pppNoVat * v;
+  const pppVat   = pppNoVat * (1 + CONFIG.vatRate);
+  const tpVat    = tpNoVat  * (1 + CONFIG.vatRate);
 
-  var pppVat = pppNoVat * (1 + CONFIG.vatRate);
-  var tpVat  = tpNoVat  * (1 + CONFIG.vatRate);
-
-  return { pppNoVat, tpNoVat, pppVat, tpVat };
+  // return extended info
+  return { pppNoVat, tpNoVat, pppVat, tpVat, unit_cost_no_vat, margin };
 }
 
-// ------- DTF calc (comparison; uses same margin tiers/overhead) --------
+// ------- DTF calc --------
 function calcDTF(garment, volume, neckOn){
   const v = Math.max(1, Math.floor(volume||0));
   const labor = CONFIG.labor_per_garment;
 
-  var unit_cost_no_vat = garment + CONFIG.dtf_price_no_vat + labor;
+  let unit_cost_no_vat = garment + CONFIG.dtf_price_no_vat + labor;
   unit_cost_no_vat *= (1 + CONFIG.overhead_rate);
 
   const margin = getMarginRate(v);
-  var pppNoVat = unit_cost_no_vat * (1 + margin);
+  let pppNoVat = unit_cost_no_vat * (1 + margin);
 
   if(neckOn){ pppNoVat += neckNoVatAdd(); }
 
   const tpNoVat  = pppNoVat * v;
+  const pppVat   = pppNoVat * (1 + CONFIG.vatRate);
+  const tpVat    = tpNoVat  * (1 + CONFIG.vatRate);
 
-  var pppVat = pppNoVat * (1 + CONFIG.vatRate);
-  var tpVat  = tpNoVat  * (1 + CONFIG.vatRate);
-
-  return { pppNoVat, tpNoVat, pppVat, tpVat };
+  return { pppNoVat, tpNoVat, pppVat, tpVat, unit_cost_no_vat, margin };
 }
 
 // ---- DOM refs
@@ -287,6 +320,20 @@ const p1=$("pppNoVat"), t1=$("tpNoVat"), p2=$("pppVat"), t2=$("tpVat");
 // DTF outputs
 const d1=$("dtfPppNoVat"), d2=$("dtfTpNoVat"), d3=$("dtfPppVat"), d4=$("dtfTpVat");
 const dtfBlock=document.getElementById("dtfBlock");
+
+// KPI refs
+const tierLabel = $("tierLabel"), ppu = $("ppu"), targetProfit = $("targetProfit");
+const needSp = $("needSp"), needDtf = $("needDtf");
+
+// Profit breakdown refs
+const profitBox = $("profitBox");
+const activeMethod = $("activeMethod");
+const pbVolume = $("pbVolume");
+const pbRevenue = $("pbRevenue");
+const pbCost = $("pbCost");
+const pbGross = $("pbGross");
+const pbTax = $("pbTax");
+const pbNet = $("pbNet");
 
 // --- state helpers
 function segSet(btnOn, btnOff, on){
@@ -314,7 +361,63 @@ function applyDTFForceUI(reason){
 
 function colorsToNumber(){ return (colors.value==="5+") ? 5 : parseInt(colors.value||"1",10); }
 
-// --- main update
+// Volum necesar pentru profit net target
+function volForNetTarget(ppu_no_vat){
+  if(ppu_no_vat <= 0) return "—";
+  const net_per_unit = ppu_no_vat * (1 - CONFIG.micro_tax_rate);
+  const target = Math.max(0, parseFloat(targetProfit.value||"0"));
+  return Math.ceil(target / net_per_unit);
+}
+
+function renderTierAndTarget(g, c, v, neckOn, spBlocked, dtfOn){
+  const margin = getMarginRate(v);
+  tierLabel.textContent = Math.round(margin*100) + "%";
+
+  // SP
+  if(spBlocked){
+    ppu.textContent = "—";
+    needSp.textContent = "—";
+  } else {
+    const sp = calcScreen(g, c, v, neckOn);
+    const profit_per_unit_no_vat = sp.pppNoVat - sp.unit_cost_no_vat;
+    ppu.textContent = fmt(profit_per_unit_no_vat);
+    needSp.textContent = volForNetTarget(profit_per_unit_no_vat);
+  }
+
+  // DTF
+  if(dtfOn){
+    const dx = calcDTF(g, v, neckOn);
+    const ppu_dtf = dx.pppNoVat - dx.unit_cost_no_vat;
+    needDtf.textContent = volForNetTarget(ppu_dtf);
+  } else {
+    needDtf.textContent = "—";
+  }
+}
+
+function renderProfitBreakdown(){
+  const isDtf = segGet(dtfOnBtn);
+  const method = isDtf ? "DTF" : "Screen Print";
+  const g = parseFloat(garment.value || "0");
+  const c = colorsToNumber();
+  const v = parseInt(volume.value || "1",10);
+  const neckOn = segGet(neckOnBtn);
+
+  const data = isDtf ? calcDTF(g,v,neckOn) : calcScreen(g,c,v,neckOn);
+  const profit_unit = data.pppNoVat - data.unit_cost_no_vat;
+  const gross = profit_unit * v;
+  const micro = gross * CONFIG.micro_tax_rate;
+  const net = gross - micro;
+
+  activeMethod.textContent = method;
+  pbVolume.textContent = v;
+  pbRevenue.textContent = fmt(data.tpNoVat);
+  pbCost.textContent = fmt(data.unit_cost_no_vat * v);
+  pbGross.textContent = fmt(gross);
+  pbTax.textContent = fmt(micro);
+  pbNet.textContent = fmt(net);
+}
+
+// --- main update (with SP blocked at 5+ colors)
 function update(){
   const g = parseFloat(garment.value || "0");
   const c = colorsToNumber();
@@ -350,14 +453,27 @@ function update(){
 
   // Margin badge + profit target
   renderTierAndTarget(g, c, v, neckOn, spBlocked, dtfOn);
-}
 
+  // If profit breakdown box is open, refresh its numbers live
+  if(profitBox.style.display === "block"){ renderProfitBreakdown(); }
+}
 
 // --- listeners
 ["input","change"].forEach(ev=>{
   garment.addEventListener(ev, update);
   colors.addEventListener(ev, update);
   volume.addEventListener(ev, update);
+});
+
+$("toggleProfit").addEventListener("click", ()=>{
+  if(profitBox.style.display==="none"){
+    renderProfitBreakdown();
+    profitBox.style.display="block";
+    $("toggleProfit").textContent = "Hide profit breakdown";
+  } else {
+    profitBox.style.display="none";
+    $("toggleProfit").textContent = "Show profit breakdown";
+  }
 });
 
 neckOnBtn.addEventListener("click", ()=>{ segSet(neckOnBtn, neckOffBtn, true); update(); });
@@ -392,16 +508,20 @@ $("reset").addEventListener("click", ()=>{
   garment.value=""; colors.value="1"; volume.value="";
   segSet(neckOnBtn, neckOffBtn, true);
   segSet(dtfOnBtn, dtfOffBtn, true);
+  profitBox.style.display="none";
+  $("toggleProfit").textContent = "Show profit breakdown";
   update();
 });
 
+// ----- COPY & SHARE (read button state, not visibility)
 $("copy").addEventListener("click", async ()=>{
+  const dtfOn = segGet(dtfOnBtn);
   const text = `SCREEN PRINT
 Price per piece (no VAT): ${p1.textContent} ${CONFIG.currency}
 Total price (no VAT): ${t1.textContent} ${CONFIG.currency}
 Price per piece: ${p2.textContent} ${CONFIG.currency}
 Total price: ${t2.textContent} ${CONFIG.currency}
-${(dtfBlock.style.display!=="none") ? `
+${ dtfOn ? `
 DTF
 Price per piece (no VAT): ${d1.textContent} ${CONFIG.currency}
 Total price (no VAT): ${d2.textContent} ${CONFIG.currency}
@@ -418,7 +538,7 @@ $("share").addEventListener("click", async ()=>{
   if(colors.value)  params.set("c", colors.value);
   if(volume.value)  params.set("v", volume.value);
   params.set("n", segGet(neckOnBtn) ? "1":"0");
-  params.set("d", (dtfBlock.style.display!=="none") ? "1":"0");
+  params.set("d", segGet(dtfOnBtn)  ? "1":"0");
   u.search = params.toString();
   try{ await navigator.clipboard.writeText(u.toString()); alert("Prefilled link copied."); }catch(e){ prompt("Copy this link:", u.toString()); }
 });
@@ -426,9 +546,11 @@ $("share").addEventListener("click", async ()=>{
 // Register service worker if present (cache-bust param recommended)
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('./sw.js?v=6').catch(()=>{});
+    navigator.serviceWorker.register('./sw.js?v=8').catch(()=>{});
   });
 }
+
+targetProfit.addEventListener("input", update);
 </script>
 </body>
 </html>
